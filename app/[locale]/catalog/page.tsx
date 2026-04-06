@@ -97,7 +97,7 @@ export default async function CatalogPage({
     } else {
       try {
         const favs = await prisma.favorite.findMany({ where: { userId: viewerId }, select: { tutorId: true } });
-        favoriteTutorIds = (favs || []).map((f) => String((f as any)?.tutorId || "")).filter(Boolean);
+        favoriteTutorIds = (favs || []).map((f: { tutorId: string }) => String(f.tutorId || "")).filter(Boolean);
         if (favoriteTutorIds.length === 0) favoriteTutorIds = ["__none__"];
       } catch {
         favoriteTutorIds = ["__none__"];

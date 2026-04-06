@@ -11,6 +11,10 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   if (!id) return NextResponse.json({ error: "Invalid booking id" }, { status: 400 });
   let booking = await prisma.booking.findUnique({ where: { id } });
   if (!booking) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  const bookingId = booking.id;
+  const bookingStudentId = booking.studentId;
+  const bookingTutorId = booking.tutorId;
+  const bookingEndsAt = booking.endsAt;
   // gate: only student or tutor can see
   const tutor = await prisma.tutor.findUnique({ where: { id: booking.tutorId } });
   const isTutor = tutor?.userId === String(user.id);
@@ -33,10 +37,10 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       if (endsAtMs < cutoffMs) {
         booking = await prisma.$transaction(async (tx) => {
           const updated = await tx.booking.update({
-            where: { id: booking.id },
+            where: { id: bookingId },
             data: {
               status: "COMPLETED",
-              endedAt: (booking as any).endedAt ?? booking.endsAt,
+              endedAt: (booking as any).endedAt ?? bookingEndsAt,
             },
           });
 
@@ -45,7 +49,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
             const tb = (tx as any)?.trialBalance;
             if (tb?.updateMany) {
               await tb.updateMany({
-                where: { studentId: String(booking.studentId), credits: { gt: 0 } },
+                where: { studentId: String(bookingStudentId), credits: { gt: 0 } },
                 data: { credits: { decrement: 1 } },
               });
             }
@@ -53,7 +57,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
             const lb = (tx as any)?.lessonBalance;
             if (lb?.updateMany) {
               await lb.updateMany({
-                where: { studentId: String(booking.studentId), tutorId: String(booking.tutorId), credits: { gt: 0 } },
+                where: { studentId: String(bookingStudentId), tutorId: String(bookingTutorId), credits: { gt: 0 } },
                 data: { credits: { decrement: 1 } },
               });
             }
