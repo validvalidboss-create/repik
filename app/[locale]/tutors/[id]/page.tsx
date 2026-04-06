@@ -739,7 +739,7 @@ export default async function TutorPage({ params, searchParams }: { params: Prom
 
                 {topReviews.length > 0 ? (
                   <div className="mt-5 grid grid-cols-1 md:grid-cols-3 gap-3">
-                    {topReviews.map((r) => (
+                    {topReviews.map((r: { id: string; author?: { name?: string | null } | null; rating?: number | null; createdAt?: string | Date | null; text?: string | null }) => (
                       <div key={r.id} className="rounded-xl border border-neutral-200 bg-white p-4">
                         <div className="flex items-center justify-between">
                           <div className="font-medium text-sm">{r.author?.name || "User"}</div>
