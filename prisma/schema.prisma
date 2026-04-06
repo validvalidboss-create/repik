@@ -1,0 +1,333 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+generator client_default {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Favorite {
+  id        String   @id @default(cuid())
+  userId    String
+  tutorId   String
+  createdAt DateTime @default(now())
+  tutor     Tutor    @relation(fields: [tutorId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@unique([userId, tutorId])
+  @@index([userId])
+  @@index([tutorId])
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model User {
+  id               String            @id @default(cuid())
+  email            String            @unique
+  emailVerified    DateTime?
+  name             String?
+  image            String?
+  role             Role              @default(STUDENT)
+  locale           String            @default("uk")
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  accounts         Account[]
+  archivedByTutors ArchivedStudent[]
+  studentBookings  Booking[]         @relation("StudentBookings")
+  favorites        Favorite[]
+  lessonBalances   LessonBalance[]
+  trialBalance     TrialBalance?
+  lessonPurchases  LessonPackagePurchase[]
+  lessonIssues     LessonIssue[]
+  messages         Message[]
+  reviews          Review[]
+  sessions         Session[]
+  tutor            Tutor?
+}
+
+model Tutor {
+  id                   String            @id @default(cuid())
+  userId               String            @unique
+  bio                  String?
+  headline             String?
+  rateCents            Int               @default(0)
+  currency             String            @default("UAH")
+  languages            String[]
+  subjects             String[]
+  rating               Float             @default(0)
+  ratingCount          Int               @default(0)
+  videoUrl             String?
+  media                String[]
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+  allowedDurations     Int[]
+  country              String?
+  defaultLessonMinutes Int               @default(50)
+  native               Boolean           @default(false)
+  tracks               String[]
+  moderationNote       String?
+  payoutBankName       String?
+  payoutCardLast4      String?
+  payoutIban           String?
+  payoutReceiverName   String?
+  archivedStudents     ArchivedStudent[]
+  availability         Availability[]
+  bans                 Ban[]
+  bookings             Booking[]
+  favorites            Favorite[]
+  lessonBalances       LessonBalance[]
+  lessonPurchases      LessonPackagePurchase[]
+  payouts              Payout[]
+  user                 User              @relation(fields: [userId], references: [id])
+}
+
+model LessonBalance {
+  id        String   @id @default(cuid())
+  studentId String
+  tutorId   String
+  credits   Int      @default(0)
+  paused    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  student   User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  tutor     Tutor    @relation(fields: [tutorId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, tutorId])
+  @@index([studentId])
+  @@index([tutorId])
+}
+
+model TrialBalance {
+  id        String   @id @default(cuid())
+  studentId String   @unique
+  credits   Int      @default(3)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  student   User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([studentId])
+}
+
+model LessonPackagePurchase {
+  id          String   @id @default(cuid())
+  purchaseKey String   @unique
+  studentId   String
+  tutorId     String
+  lessons     Int
+  createdAt   DateTime @default(now())
+
+  student     User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  tutor       Tutor    @relation(fields: [tutorId], references: [id], onDelete: Cascade)
+
+  @@index([studentId])
+  @@index([tutorId])
+  @@index([studentId, tutorId])
+}
+
+model Availability {
+  id        String   @id @default(cuid())
+  tutorId   String
+  weekday   Int
+  startMin  Int
+  endMin    Int
+  timezone  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  tutor     Tutor    @relation(fields: [tutorId], references: [id])
+
+  @@index([tutorId, weekday])
+}
+
+model Booking {
+  id                 String        @id @default(cuid())
+  studentId          String
+  tutorId            String
+  startsAt           DateTime
+  endsAt             DateTime
+  status             BookingStatus @default(PENDING)
+  priceCents         Int           @default(0)
+  currency           String        @default("UAH")
+  commissionUSDCents Int           @default(100)
+  paymentId          String?
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+  durationMinutes    Int           @default(50)
+  endedAt            DateTime?
+  startedAt          DateTime?
+  student            User          @relation("StudentBookings", fields: [studentId], references: [id])
+  tutor              Tutor         @relation(fields: [tutorId], references: [id])
+  issues             LessonIssue[]
+  messages           Message[]
+  review             Review?
+
+  @@index([studentId])
+  @@index([tutorId])
+  @@index([startsAt])
+}
+
+model LessonIssue {
+  id         String            @id @default(cuid())
+  bookingId  String
+  reporterId String
+  type       LessonIssueType
+  status     LessonIssueStatus @default(OPEN)
+  message    String?
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
+  booking    Booking           @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  reporter   User              @relation(fields: [reporterId], references: [id], onDelete: Cascade)
+
+  @@index([bookingId])
+  @@index([reporterId])
+}
+
+model Message {
+  id          String   @id @default(cuid())
+  bookingId   String
+  senderId    String
+  content     String
+  attachments String[]
+  createdAt   DateTime @default(now())
+  booking     Booking  @relation(fields: [bookingId], references: [id])
+  sender      User     @relation(fields: [senderId], references: [id])
+
+  @@index([bookingId])
+}
+
+model Review {
+  id        String   @id @default(cuid())
+  bookingId String   @unique
+  authorId  String
+  rating    Int
+  text      String?
+  createdAt DateTime @default(now())
+  author    User     @relation(fields: [authorId], references: [id])
+  booking   Booking  @relation(fields: [bookingId], references: [id])
+}
+
+model CreditsTransfer {
+  id          String   @id @default(cuid())
+  transferKey String   @unique
+  studentId   String
+  fromTutorId String
+  toTutorId   String
+  credits     Int
+  createdAt   DateTime @default(now())
+
+  @@index([studentId])
+  @@index([fromTutorId])
+  @@index([toTutorId])
+  @@index([studentId, fromTutorId])
+  @@index([studentId, toTutorId])
+}
+
+model Payout {
+  id          String       @id @default(cuid())
+  tutorId     String
+  amountCents Int
+  currency    String       @default("UAH")
+  status      PayoutStatus @default(PENDING)
+  externalId  String?
+  createdAt   DateTime     @default(now())
+  note        String?
+  updatedAt   DateTime     @default(now()) @updatedAt
+  tutor       Tutor        @relation(fields: [tutorId], references: [id])
+}
+
+model Ban {
+  id        String   @id @default(cuid())
+  tutorId   String
+  reason    String?
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  tutor     Tutor    @relation(fields: [tutorId], references: [id])
+
+  @@index([tutorId, active])
+}
+
+model ArchivedStudent {
+  id        String   @id @default(cuid())
+  tutorId   String
+  studentId String
+  createdAt DateTime @default(now())
+  student   User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  tutor     Tutor    @relation(fields: [tutorId], references: [id], onDelete: Cascade)
+
+  @@unique([tutorId, studentId])
+  @@index([tutorId])
+  @@index([studentId])
+}
+
+enum Role {
+  STUDENT
+  TUTOR
+  ADMIN
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  COMPLETED
+  CANCELED
+  REFUNDED
+  DISPUTED
+  MISSED_TRIAL
+}
+
+enum LessonIssueType {
+  TUTOR_NO_SHOW
+  STUDENT_COULD_NOT_JOIN
+  TECHNICAL_PROBLEM
+  QUALITY_NOT_AS_EXPECTED
+  OTHER
+}
+
+enum LessonIssueStatus {
+  OPEN
+  RESOLVED
+  REJECTED
+}
+
+enum PayoutStatus {
+  PENDING
+  PAID
+  FAILED
+}
