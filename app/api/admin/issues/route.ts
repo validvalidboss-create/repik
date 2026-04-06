@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
+import { Prisma } from "@prisma/client";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -69,7 +70,7 @@ export async function POST(req: NextRequest) {
 
   const adminEmail = process.env.ADMIN_EMAIL || "admin@repetitir.local";
 
-  const result = await prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     let adminUser = await tx.user.findUnique({ where: { email: adminEmail } });
     if (!adminUser) {
       adminUser = await tx.user.create({
